@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: macos-14
@@ -40,11 +41,22 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libdwarf-dev libcurl4-openssl-dev zlib1g-dev pkg-config
-          # Debug: show what's available
-          pkg-config --cflags --libs libdwarf || echo "libdwarf not found in pkg-config"
-          find /usr -name "libdwarf*" -o -name "libdw*" 2>/dev/null | head -20
-          ls -la /usr/lib/x86_64-linux-gnu/pkgconfig/ | grep -i dwarf || true
+          sudo apt-get install -y libdwarf-dev libcurl4-openssl-dev zlib1g-dev pkg-config libelf-dev
+          # Ubuntu's libdwarf-dev doesn't include a pkg-config file, so create one
+          sudo tee /usr/lib/x86_64-linux-gnu/pkgconfig/libdwarf.pc << 'EOF'
+          prefix=/usr
+          exec_prefix=${prefix}
+          libdir=${prefix}/lib/x86_64-linux-gnu
+          includedir=${prefix}/include
+
+          Name: libdwarf
+          Description: DWARF debugging information library
+          Version: 0.4.2
+          Libs: -L${libdir} -ldwarf
+          Cflags: -I${includedir}
+          Requires: libelf
+          EOF
+          pkg-config --cflags --libs libdwarf
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
