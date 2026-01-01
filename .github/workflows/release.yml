@@ -14,12 +14,15 @@ jobs:
           - os: macos-14
             target: aarch64-macos
             artifact: kcov-aarch64-macos
-          - os: macos-13
+            zig_url: https://ziglang.org/download/0.15.2/zig-macos-aarch64-0.15.2.tar.xz
+          - os: macos-15
             target: x86_64-macos
             artifact: kcov-x86_64-macos
+            zig_url: https://ziglang.org/download/0.15.2/zig-macos-x86_64-0.15.2.tar.xz
           - os: ubuntu-latest
             target: x86_64-linux
             artifact: kcov-x86_64-linux
+            zig_url: https://ziglang.org/download/0.15.2/zig-linux-x86_64-0.15.2.tar.xz
 
     runs-on: ${{ matrix.os }}
 
@@ -27,9 +30,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Zig
-        uses: mlugg/setup-zig@v1
-        with:
-          version: 0.15.2
+        run: |
+          curl -L ${{ matrix.zig_url }} | tar xJ
+          ZIG_DIR=$(ls -d zig-*)
+          echo "$PWD/$ZIG_DIR" >> $GITHUB_PATH
+          ls -la $ZIG_DIR/zig
 
       - name: Install dependencies (Ubuntu)
         if: runner.os == 'Linux'
