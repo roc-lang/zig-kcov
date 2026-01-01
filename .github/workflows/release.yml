@@ -1,69 +1,83 @@
-name: Release
+name: Build and Release
+
 on:
   push:
     tags:
-      - "*"
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
   build:
-    name: Build executable
-    runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: [amd64]
+        include:
+          - os: macos-14
+            target: aarch64-macos
+            artifact: kcov-aarch64-macos
+          - os: macos-13
+            target: x86_64-macos
+            artifact: kcov-x86_64-macos
+          - os: ubuntu-latest
+            target: x86_64-linux
+            artifact: kcov-x86_64-linux
+
+    runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-      - name: Prepare
-        run: chmod u+x .github/workflows/generic-build.sh .github/workflows/ci-run-tests.sh
+      - name: Install Zig
+        uses: mlugg/setup-zig@v1
+        with:
+          version: 0.15.2
 
-      - name: Build for matrix.arch == amd64
+      - name: Install dependencies (Ubuntu)
+        if: runner.os == 'Linux'
         run: |
-          sudo .github/workflows/generic-build.sh ${{ matrix.arch }}
-          sudo .github/workflows/ci-run-tests.sh ${{ matrix.arch }}
+          sudo apt-get update
+          sudo apt-get install -y libdwarf-dev libcurl4-openssl-dev zlib1g-dev pkg-config
 
-      - uses: actions/upload-artifact@v2
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install libdwarf pkg-config
+
+      - name: Build kcov
+        run: zig build -Doptimize=ReleaseFast
+
+      - name: Codesign (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          codesign -s - --entitlements osx-entitlements.xml -f zig-out/bin/kcov
+
+      - name: Create tarball
+        run: |
+          mkdir -p dist
+          cp zig-out/bin/kcov dist/
+          cp osx-entitlements.xml dist/ 2>/dev/null || true
+          tar -czvf ${{ matrix.artifact }}.tar.gz -C dist .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: kcov-${{ matrix.arch }}.tar.gz
-          path: kcov-${{ matrix.arch }}.tar.gz
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}.tar.gz
 
-
-  build-and-push-docker-image:
-    needs: [build]
+  release:
+    needs: build
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
     steps:
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
-
-    - name: Get git tag
-      id: tag
-      uses: dawidd6/action-get-tag@v1
-
-    - name: Docker Hub login
-      env:
-        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      run: echo $DOCKER_PASSWORD | docker login --username $DOCKER_USERNAME --password-stdin
-
-    - name: Build docker image
-      run: docker build -t kcov/kcov:${{ steps.tag.outputs.tag }} .
-
-    - name: Push to Docker Hub
-      run: docker push kcov/kcov:${{ steps.tag.outputs.tag }}
-
-  create_release:
-    name: Create release
-    needs: [build-and-push-docker-image]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v2
-
-      - name: Create release
-        uses: ncipollo/release-action@v1
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
         with:
-          allowUpdates: true
-          artifacts: kcov-*/kcov-*.tar.gz
-          artifactContentType: application/gzip
-          token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*.tar.gz
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
