@@ -32,7 +32,7 @@ jobs:
       - name: Install Zig
         run: |
           curl -L ${{ matrix.zig_url }} | tar xJ
-          ZIG_DIR=$(ls -d zig-*)
+          ZIG_DIR=$(ls -d zig-*-*-0.15.2)
           echo "$PWD/$ZIG_DIR" >> $GITHUB_PATH
           ls -la $ZIG_DIR/zig
 
