@@ -1,0 +1,15 @@
+.{
+    .name = .kcov,
+    .version = "42.0.1",
+    .minimum_zig_version = "0.15.0",
+    .dependencies = .{},
+    .fingerprint = 0xdcf17906e106e012,
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "data",
+        "COPYING",
+        "README.md",
+    },
+}
