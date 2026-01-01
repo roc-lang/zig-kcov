@@ -182,6 +182,11 @@ pub fn build(b: *std.Build) void {
 
     if (is_macos) {
         exe_module.addCSourceFiles(.{ .files = &macho_srcs_cpp, .flags = &cxx_flags });
+        // macOS uses dummy solib handler (no ELF/LD_PRELOAD support)
+        exe_module.addCSourceFile(.{
+            .file = b.path("src/dummy-solib-handler.cc"),
+            .flags = &cxx_flags,
+        });
 
         // Generate mach files on macOS using a separate WriteFile step
         mig_wf = b.addWriteFiles();
