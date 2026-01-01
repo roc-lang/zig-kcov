@@ -51,7 +51,14 @@ const macho_srcs_cpp = [_][]const u8{
 };
 
 const elf_srcs_cpp = [_][]const u8{
-    "src/dummy-solib-handler.cc",
+    "src/engines/ptrace.cc",
+    "src/engines/ptrace_linux.cc",
+    "src/engines/clang-coverage-engine.cc",
+    "src/parsers/elf.cc",
+    "src/parsers/elf-parser.cc",
+    "src/parsers/dwarf.cc",
+    "src/solib-handler.cc",
+    "src/solib-parser/phdr_data.c",
 };
 
 const disassembler_srcs_cpp = [_][]const u8{
@@ -152,12 +159,18 @@ pub fn build(b: *std.Build) void {
     });
 
     exe_module.addIncludePath(b.path("src/include"));
+    exe_module.addIncludePath(b.path("src/solib-parser"));
     exe_module.addIncludePath(wf.getDirectory());
 
     exe_module.addCSourceFiles(.{ .files = &kcov_srcs_cpp, .flags = &cxx_flags });
     exe_module.addCSourceFiles(.{ .files = &disassembler_srcs_cpp, .flags = &cxx_flags });
     exe_module.addCSourceFiles(.{ .files = &coveralls_srcs_cpp, .flags = &cxx_flags });
-    exe_module.addCSourceFiles(.{ .files = &elf_srcs_cpp, .flags = &cxx_flags });
+
+    // Add platform-specific source files
+    if (!is_macos) {
+        // Linux: add ELF parser and ptrace engine
+        exe_module.addCSourceFiles(.{ .files = &elf_srcs_cpp, .flags = &cxx_flags });
+    }
 
     // Variable to hold the mig step for later dependency
     var gen_mach_step: ?*std.Build.Step = null;
@@ -217,8 +230,16 @@ pub fn build(b: *std.Build) void {
 
     exe_module.linkSystemLibrary("c++", .{});
     exe_module.linkSystemLibrary("curl", .{});
-    exe_module.linkSystemLibrary("libdwarf", .{ .use_pkg_config = .yes });
     exe_module.linkSystemLibrary("z", .{});
+
+    if (is_macos) {
+        // macOS uses libdwarf
+        exe_module.linkSystemLibrary("libdwarf", .{ .use_pkg_config = .yes });
+    } else {
+        // Linux uses elfutils (libelf + libdw)
+        exe_module.linkSystemLibrary("libelf", .{ .use_pkg_config = .yes });
+        exe_module.linkSystemLibrary("libdw", .{ .use_pkg_config = .yes });
+    }
 
     const exe = b.addExecutable(.{
         .name = "kcov",
