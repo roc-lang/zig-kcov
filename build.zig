@@ -58,6 +58,9 @@ const elf_srcs_cpp = [_][]const u8{
     "src/parsers/elf-parser.cc",
     "src/parsers/dwarf.cc",
     "src/solib-handler.cc",
+};
+
+const elf_srcs_c = [_][]const u8{
     "src/solib-parser/phdr_data.c",
 };
 
@@ -170,6 +173,7 @@ pub fn build(b: *std.Build) void {
     if (!is_macos) {
         // Linux: add ELF parser and ptrace engine
         exe_module.addCSourceFiles(.{ .files = &elf_srcs_cpp, .flags = &cxx_flags });
+        exe_module.addCSourceFiles(.{ .files = &elf_srcs_c, .flags = &c_flags });
     }
 
     // Variable to hold the mig step for later dependency
