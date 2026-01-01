@@ -57,7 +57,7 @@ const elf_srcs_cpp = [_][]const u8{
     "src/parsers/elf.cc",
     "src/parsers/elf-parser.cc",
     "src/parsers/dwarf.cc",
-    "src/solib-handler.cc",
+    "src/dummy-solib-handler.cc", // Use dummy handler to avoid needing embedded library
 };
 
 const elf_srcs_c = [_][]const u8{
