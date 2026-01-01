@@ -10,6 +10,7 @@ enum FileType {
   zig = 0,
   c = 1,
   cpp = 2,
+  unsupported = 3,
 };
 
 bool endsWith(const std::string& full_string, const std::string& ending) {
@@ -38,9 +39,8 @@ FileType getFileExt(const std::string& file_name) {
     return cpp;
   }
 
-  std::cerr << "Not support file name:" << file_name << std::endl;
-
-  std::abort();
+  // For unsupported file types (assembly, headers, etc.), don't abort - just skip coverage
+  return unsupported;
 }
 
 bool shouldCover(const std::string& line, const std::string& file_name) {
@@ -78,7 +78,13 @@ bool shouldCover(const std::string& line, const std::string& file_name) {
       return true;
     }
     break;
+
+    case unsupported:
+      // Don't track coverage for unsupported file types (assembly, headers, etc.)
+      return false;
   }
+
+  return true;
 }
 
 }
