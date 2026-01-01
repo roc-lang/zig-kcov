@@ -14,15 +14,15 @@ jobs:
           - os: macos-14
             target: aarch64-macos
             artifact: kcov-aarch64-macos
-            zig_url: https://ziglang.org/download/0.15.2/zig-macos-aarch64-0.15.2.tar.xz
+            zig_url: https://ziglang.org/download/0.15.2/zig-aarch64-macos-0.15.2.tar.xz
           - os: macos-15
             target: x86_64-macos
             artifact: kcov-x86_64-macos
-            zig_url: https://ziglang.org/download/0.15.2/zig-macos-x86_64-0.15.2.tar.xz
+            zig_url: https://ziglang.org/download/0.15.2/zig-x86_64-macos-0.15.2.tar.xz
           - os: ubuntu-latest
             target: x86_64-linux
             artifact: kcov-x86_64-linux
-            zig_url: https://ziglang.org/download/0.15.2/zig-linux-x86_64-0.15.2.tar.xz
+            zig_url: https://ziglang.org/download/0.15.2/zig-x86_64-linux-0.15.2.tar.xz
 
     runs-on: ${{ matrix.os }}
 
