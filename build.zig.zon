@@ -1,20 +1,16 @@
 .{
-    .name = "kcov",
-    // kcov use numbers (as well as git version) for versioning, which is not semantic
-    // we will use convert kcov's version as <kcov version>.x.x
+    .name = .kcov,
     .version = "42.0.1",
-    .minimum_zig_version = "0.12.0",
-    .dependencies = .{
-        .zcmd = .{
-            .url = "https://github.com/liyu1981/zcmd.zig/archive/refs/tags/v0.2.1.tar.gz",
-            .hash = "12205e6bd4374c56bcea698e36309d141cfe9fc760ec79d715a0d54f632b999f39dc",
-        },
-    },
+    .minimum_zig_version = "0.15.0",
+    .dependencies = .{},
+    .fingerprint = 0xdcf17906e106e012,
     .paths = .{
         "build.zig",
         "build.zig.zon",
         "src",
-        "LICENSE",
+        "data",
+        "osx-entitlements.xml",
+        "COPYING",
         "README.md",
     },
 }
