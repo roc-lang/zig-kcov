@@ -242,8 +242,9 @@ pub fn build(b: *std.Build) void {
     exe_module.linkSystemLibrary("z", .{});
 
     if (is_macos) {
-        // macOS uses libdwarf (library file is libdwarf.dylib, so we pass "dwarf")
-        exe_module.linkSystemLibrary("dwarf", .{});
+        // macOS uses libdwarf - use pkg-config to get correct include paths
+        // (Homebrew's dwarfutils 2.x installs headers in libdwarf-2/ subdirectory)
+        exe_module.linkSystemLibrary("libdwarf", .{ .use_pkg_config = .yes });
     } else {
         // Linux uses elfutils (libelf + libdw)
         exe_module.linkSystemLibrary("libelf", .{ .use_pkg_config = .yes });
