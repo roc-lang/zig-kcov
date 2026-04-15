@@ -242,9 +242,17 @@ pub fn build(b: *std.Build) void {
     exe_module.linkSystemLibrary("z", .{});
 
     if (is_macos) {
-        // macOS uses libdwarf - use pkg-config to get correct include paths
-        // (Homebrew's dwarfutils 2.x installs headers in libdwarf-2/ subdirectory)
-        exe_module.linkSystemLibrary("libdwarf", .{ .use_pkg_config = .yes });
+        // macOS uses libdwarf for DWARF parsing.
+        // The library file is libdwarf.dylib, so the linker name must be "dwarf" (not "libdwarf").
+        // Zig prepends "lib" to the name when searching, so "libdwarf" incorrectly searches
+        // for "liblibdwarf.dylib". pkg-config (if installed) provides correct flags automatically.
+        exe_module.linkSystemLibrary("dwarf", .{ .use_pkg_config = .yes });
+        // Add Homebrew paths as fallback when pkg-config is not available.
+        // Homebrew's dwarfutils 2.x installs headers in a versioned subdirectory (libdwarf-2/).
+        const homebrew = std.posix.getenv("HOMEBREW_PREFIX") orelse
+            (if (target.result.cpu.arch == .aarch64) "/opt/homebrew" else "/usr/local");
+        exe_module.addSystemIncludePath(.{ .cwd_relative = b.fmt("{s}/include", .{homebrew}) });
+        exe_module.addLibraryPath(.{ .cwd_relative = b.fmt("{s}/lib", .{homebrew}) });
     } else {
         // Linux uses elfutils (libelf + libdw)
         exe_module.linkSystemLibrary("libelf", .{ .use_pkg_config = .yes });
