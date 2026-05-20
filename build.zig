@@ -115,7 +115,7 @@ pub fn build(b: *std.Build) void {
     gen_html.addArg("tablesorter_widgets_text");
     gen_html.addFileArg(b.path("data/tablesorter-theme.css"));
     gen_html.addArg("tablesorter_theme_text");
-    const html_data_file = wf.addCopyFile(gen_html.captureStdOut(), "html-data-files.cc");
+    const html_data_file = wf.addCopyFile(gen_html.captureStdOut(.{}), "html-data-files.cc");
 
     // Generate bash-helper.cc
     const gen_bash = b.addSystemCommand(&.{"python3"});
@@ -124,35 +124,35 @@ pub fn build(b: *std.Build) void {
     gen_bash.addArg("bash_helper");
     gen_bash.addFileArg(b.path("src/engines/bash-helper-debug-trap.sh"));
     gen_bash.addArg("bash_helper_debug_trap");
-    const bash_helper_file = wf.addCopyFile(gen_bash.captureStdOut(), "bash-helper.cc");
+    const bash_helper_file = wf.addCopyFile(gen_bash.captureStdOut(.{}), "bash-helper.cc");
 
     // Generate python-helper.cc
     const gen_python = b.addSystemCommand(&.{"python3"});
     gen_python.addFileArg(b.path("src/bin-to-c-source.py"));
     gen_python.addFileArg(b.path("src/engines/python-helper.py"));
     gen_python.addArg("python_helper");
-    const python_helper_file = wf.addCopyFile(gen_python.captureStdOut(), "python-helper.cc");
+    const python_helper_file = wf.addCopyFile(gen_python.captureStdOut(.{}), "python-helper.cc");
 
     // Generate bash-redirector-library.cc from compiled library
     const gen_bash_redir = b.addSystemCommand(&.{"python3"});
     gen_bash_redir.addFileArg(b.path("src/bin-to-c-source.py"));
     gen_bash_redir.addArtifactArg(bash_execve_redirector_lib);
     gen_bash_redir.addArg("bash_redirector_library");
-    const bash_redir_file = wf.addCopyFile(gen_bash_redir.captureStdOut(), "bash-redirector-library.cc");
+    const bash_redir_file = wf.addCopyFile(gen_bash_redir.captureStdOut(.{}), "bash-redirector-library.cc");
 
     // Generate bash-cloexec-library.cc from compiled library
     const gen_bash_cloexec = b.addSystemCommand(&.{"python3"});
     gen_bash_cloexec.addFileArg(b.path("src/bin-to-c-source.py"));
     gen_bash_cloexec.addArtifactArg(bash_tracefd_cloexec_lib);
     gen_bash_cloexec.addArg("bash_cloexec_library");
-    const bash_cloexec_file = wf.addCopyFile(gen_bash_cloexec.captureStdOut(), "bash-cloexec-library.cc");
+    const bash_cloexec_file = wf.addCopyFile(gen_bash_cloexec.captureStdOut(.{}), "bash-cloexec-library.cc");
 
     // Generate kcov-system-library.cc from compiled library
     const gen_kcov_sys = b.addSystemCommand(&.{"python3"});
     gen_kcov_sys.addFileArg(b.path("src/bin-to-c-source.py"));
     gen_kcov_sys.addArtifactArg(kcov_system_lib);
     gen_kcov_sys.addArg("kcov_system_library");
-    const kcov_sys_file = wf.addCopyFile(gen_kcov_sys.captureStdOut(), "kcov-system-library.cc");
+    const kcov_sys_file = wf.addCopyFile(gen_kcov_sys.captureStdOut(.{}), "kcov-system-library.cc");
 
     // Build main executable
     const exe_module = b.createModule(.{
@@ -249,7 +249,7 @@ pub fn build(b: *std.Build) void {
         exe_module.linkSystemLibrary("dwarf", .{ .use_pkg_config = .yes });
         // Add Homebrew paths as fallback when pkg-config is not available.
         // Homebrew's dwarfutils 2.x installs headers in a versioned subdirectory (libdwarf-2/).
-        const homebrew = std.posix.getenv("HOMEBREW_PREFIX") orelse
+        const homebrew = b.graph.environ_map.get("HOMEBREW_PREFIX") orelse
             (if (target.result.cpu.arch == .aarch64) "/opt/homebrew" else "/usr/local");
         exe_module.addSystemIncludePath(.{ .cwd_relative = b.fmt("{s}/include", .{homebrew}) });
         exe_module.addLibraryPath(.{ .cwd_relative = b.fmt("{s}/lib", .{homebrew}) });
