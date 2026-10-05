@@ -41,9 +41,39 @@ after building is done. The binary is at `build/src/kcov`. Copy somewhere and us
 
 ### But can I build it with `zig`?
 
-There is now an experimental `build.zig` file, and you can use `zig build sign_kcov` to build on Macos with M1/M2/M3 chip. The built result will be at `zig-out/bin/kcov`, and it will work as same to the one compiled from CMake. (need this `sign_kcov` step because macos needs to sign before use for debugging purpose, which is how `kcov` underlying works).
+The Zig build requires Zig 0.17.0 or later, Python 3, and the development
+headers and libraries for curl and zlib. Linux also requires elfutils
+(`libelf` and `libdw`); macOS requires dwarfutils and the Xcode command line
+tools (`mig` and `codesign`). On Ubuntu, install the dependencies with:
 
-I am planning to complete this `build.zig` in future for `Linux`/`Windows` on `x86_64` or even `arm/arm64`, but it needs some time.
+```sh
+sudo apt-get install python3 pkg-config libcurl4-openssl-dev zlib1g-dev libelf-dev libdw-dev
+```
+
+On macOS, install them with `brew install pkgconf curl zlib dwarfutils`.
+The build uses `pkg-config` and `HOMEBREW_PREFIX` to find macOS libraries,
+and signs the executable automatically.
+
+```sh
+zig build -Doptimize=ReleaseSafe
+zig build run -Doptimize=ReleaseSafe -- --version
+```
+
+The executable is installed at `zig-out/bin/kcov`. Arguments after `--` are
+forwarded to kcov, including arguments containing spaces. To collect coverage
+from the Zig example:
+
+```sh
+cd zig-tests/helloworld
+zig build test -Doptimize=ReleaseSafe
+zig build -Doptimize=ReleaseSafe
+cd ../..
+zig build run -Doptimize=ReleaseSafe -- --include-path="$PWD/zig-tests/helloworld/src" "zig coverage" "$PWD/zig-tests/helloworld/zig-out/bin/helloworld"
+```
+
+The Zig CI builds and runs this coverage check natively on Linux x86_64 and
+AArch64. Cross builds require development libraries for the selected target;
+host `pkg-config` libraries cannot be used to link a foreign target.
 
 ## File Support
 
