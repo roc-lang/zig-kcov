@@ -1,0 +1,68 @@
+name: Zig
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-cover:
+    name: Zig 0.17 (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+            sha256: 1cbe9df9f27e6b78d14ccbca43b6703a404ef79ef1c463de901d7f088d4e2026
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+            sha256: 9e8d11661d4ae3bd57702a3832781e23ad151dde5798e16a5ccd503f65234ff8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install native development libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 pkg-config libcurl4-openssl-dev zlib1g-dev libelf-dev libdw-dev
+
+      - name: Install SHA-pinned Zig 0.17
+        env:
+          ARCH: ${{ matrix.arch }}
+          SHA256: ${{ matrix.sha256 }}
+        run: |
+          curl -fL "https://ziglang.org/download/0.17.0/zig-$ARCH-linux-0.17.0.tar.xz" -o "$RUNNER_TEMP/zig.tar.xz"
+          printf '%s  %s\n' "$SHA256" "$RUNNER_TEMP/zig.tar.xz" | sha256sum --check
+          tar -xf "$RUNNER_TEMP/zig.tar.xz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/zig-$ARCH-linux-0.17.0" >> "$GITHUB_PATH"
+
+      - name: Check formatting and build kcov
+        run: |
+          zig fmt --check build.zig build.zig.zon zig-tests/helloworld
+          zig build -Doptimize=ReleaseSafe -j2 --cache-poison=disallowed --summary all
+          zig build run -Doptimize=ReleaseSafe -j2 --cache-poison=disallowed -- --version
+
+      - name: Test and build the Zig coverage fixture
+        working-directory: zig-tests/helloworld
+        run: |
+          zig build test -Doptimize=ReleaseSafe -j2 --cache-poison=disallowed --summary all
+          zig build -Doptimize=ReleaseSafe -j2 --cache-poison=disallowed --summary all
+
+      - name: Collect and verify Zig source coverage
+        run: |
+          zig build run -Doptimize=ReleaseSafe -j2 --cache-poison=disallowed -- --include-path="$PWD/zig-tests/helloworld/src" "$RUNNER_TEMP/zig coverage" "$PWD/zig-tests/helloworld/zig-out/bin/helloworld"
+          python3 - "$RUNNER_TEMP/zig coverage" <<'PY'
+          import pathlib
+          import sys
+          import xml.etree.ElementTree as ET
+
+          reports = list(pathlib.Path(sys.argv[1]).rglob("cobertura.xml"))
+          assert reports, "kcov did not emit a Cobertura report"
+          assert any(
+              cls.attrib["filename"].endswith("/src/main.zig")
+              and any(int(line.attrib["hits"]) > 0 for line in cls.findall("./lines/line"))
+              for report in reports
+              for cls in ET.parse(report).findall(".//class")
+          ), "the report contains no executed Zig source lines"
+          PY
